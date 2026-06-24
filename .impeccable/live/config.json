@@ -1,0 +1,14 @@
+{
+  "framework": "next-js-app-router",
+  "files": [
+    "src/app/**/*.tsx",
+    "src/app/**/*.ts"
+  ],
+  "insertBefore": "</body>",
+  "commentSyntax": "jsx",
+  "cspChecked": true,
+  "devServer": {
+    "port": 3000,
+    "url": "http://localhost:3000"
+  }
+}
