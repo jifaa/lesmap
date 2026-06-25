@@ -179,6 +179,25 @@ function RecenterOnLocation({
 }
 
 // ============================================================
+// Map view controller to handle dynamic center and zoom changes
+// ============================================================
+function ChangeMapView({
+  center,
+  zoom,
+}: {
+  center: [number, number];
+  zoom: number;
+}) {
+  const map = useMap();
+
+  useEffect(() => {
+    map.setView(center, zoom);
+  }, [center, zoom, map]);
+
+  return null;
+}
+
+// ============================================================
 // Geolocation button
 // ============================================================
 function GeolocationControl({
@@ -559,6 +578,9 @@ export function LeafletMap({
         zoomControl={true}
         attributionControl={true}
       >
+          {/* Dynamic view updater */}
+          <ChangeMapView center={mapCenter} zoom={zoom} />
+
           {/* OpenStreetMap tiles */}
           <TileLayer
             attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
@@ -598,7 +620,7 @@ export function LeafletMap({
           )}
 
           {/* Landmark markers */}
-          {landmarks.map((lm) => (
+          {/*{landmarks.map((lm) => (
             <Marker
               key={lm.id}
               position={[lm.lat, lm.lng]}
@@ -632,7 +654,7 @@ export function LeafletMap({
                 </div>
               </Popup>
             </Marker>
-          ))}
+          ))}*/}
 
           {/* Course place geometries (point / line / polygon) */}
           {places.map((place) => {

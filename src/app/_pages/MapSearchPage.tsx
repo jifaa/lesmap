@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import {
   Search,
   Filter,
@@ -26,6 +26,8 @@ export function MapSearchPage() {
   const [categories, setCategories] = useState<string[]>([]);
   const [districts, setDistricts] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [initialLoaded, setInitialLoaded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   // Filter state
   const [searchQuery, setSearchQuery] = useState("");
@@ -36,90 +38,96 @@ export function MapSearchPage() {
   // Active place (highlighted on map)
   const [activePlaceId, setActivePlaceId] = useState<number | null>(null);
 
-  // Landmark filter (for centering map)
-  const [selectedLandmark, setSelectedLandmark] = useState<string>("");
 
-  // Landmark coordinates for map centering
-  const landmarkCoords: Record<string, [number, number]> = {
-    umkt: [-0.4612, 117.1496],
-    bigmall: [-0.5025, 117.1496],
-    taman: [-0.5132, 117.1418],
-    islamic: [-0.4876, 117.1537],
-  };
 
-  // Load initial data
+  const requestIdRef = useRef(0);
+
+  // Unified data loading function
+  const loadData = useCallback(async (filters?: { category?: string; district?: string; search?: string }) => {
+    const requestId = ++requestIdRef.current;
+    setLoading(true);
+    setError(null);
+
+    try {
+      const hasFilters = filters?.category || filters?.district || filters?.search;
+      const placesData = hasFilters
+        ? await fetchFilteredCoursePlaces(filters)
+        : await fetchApprovedCoursePlaces();
+
+      if (requestId !== requestIdRef.current) return;
+
+      setPlaces(placesData);
+    } catch (err) {
+      if (requestId !== requestIdRef.current) return;
+      console.error("Error loading map data:", err);
+      setPlaces([]);
+      setError("Gagal memuat data peta kursus");
+    } finally {
+      if (requestId === requestIdRef.current) {
+        setLoading(false);
+        setInitialLoaded(true);
+      }
+    }
+  }, []);
+
+  // Load initial options and data
   useEffect(() => {
-    async function loadInitialData() {
-      setLoading(true);
+    let isMounted = true;
+    async function loadInitialOptions() {
       try {
-        const [placesData, categoriesData, districtsData] = await Promise.all([
-          fetchApprovedCoursePlaces(),
+        const [categoriesData, districtsData] = await Promise.all([
           fetchCategories(),
           fetchDistricts(),
         ]);
-        setPlaces(placesData);
+        if (!isMounted) return;
         setCategories(categoriesData);
         setDistricts(districtsData);
-      } catch (error) {
-        console.error("Error loading data:", error);
-      } finally {
-        setLoading(false);
+      } catch (err) {
+        console.error("Error loading filter options:", err);
       }
     }
 
-    loadInitialData();
-  }, []);
+    loadInitialOptions();
+    loadData();
 
-  // Apply filters
-  const applyFilters = useCallback(async () => {
-    setLoading(true);
-    try {
-      const filtered = await fetchFilteredCoursePlaces({
+    return () => {
+      isMounted = false;
+    };
+  }, [loadData]);
+
+  // Debounced search after initial load
+  useEffect(() => {
+    if (!initialLoaded) return;
+
+    const timer = setTimeout(() => {
+      loadData({
         category: selectedCategory || undefined,
         district: selectedDistrict || undefined,
         search: searchQuery || undefined,
       });
-      setPlaces(filtered);
-    } catch (error) {
-      console.error("Error filtering data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }, [selectedCategory, selectedDistrict, searchQuery]);
-
-  // Debounced search
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      applyFilters();
     }, 400);
+
     return () => clearTimeout(timer);
-  }, [applyFilters]);
+  }, [initialLoaded, selectedCategory, selectedDistrict, searchQuery, loadData]);
 
   // Clear all filters
-  const clearFilters = () => {
+  const clearFilters = async () => {
     setSearchQuery("");
     setSelectedCategory("");
     setSelectedDistrict("");
     setSelectedRadius("");
-    setSelectedLandmark("");
     setActivePlaceId(null);
-    // Reload all approved places
-    fetchApprovedCoursePlaces().then((data) => {
-      setPlaces(data);
-    });
+    await loadData();
   };
 
   const hasActiveFilters =
     searchQuery ||
     selectedCategory ||
     selectedDistrict ||
-    selectedRadius ||
-    selectedLandmark;
+    selectedRadius;
 
-  // Determine map center based on landmark selection
-  const mapCenter: [number, number] = selectedLandmark
-    ? landmarkCoords[selectedLandmark] ?? [-0.5022, 117.1536]
-    : [-0.5022, 117.1536];
+  // Determine map center
+  const mapCenter: [number, number] = [-0.5022, 117.1536];
 
   return (
     <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-slate-50">
@@ -174,18 +182,7 @@ export function MapSearchPage() {
             ))}
           </select>
 
-          {/* Landmark Filter */}
-          <select
-            className="bg-slate-50 border border-slate-200 text-slate-700 text-sm rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-blue-500 cursor-pointer"
-            value={selectedLandmark}
-            onChange={(e) => setSelectedLandmark(e.target.value)}
-          >
-            <option value="">Pilih Landmark</option>
-            <option value="umkt">UMKT</option>
-            <option value="bigmall">Big Mall Samarinda</option>
-            <option value="taman">Taman Samarendah</option>
-            <option value="islamic">Islamic Center</option>
-          </select>
+
 
           {/* Radius Filter */}
           <select
@@ -202,7 +199,11 @@ export function MapSearchPage() {
 
           {/* Filter Button */}
           <button
-            onClick={applyFilters}
+            onClick={() => loadData({
+              category: selectedCategory || undefined,
+              district: selectedDistrict || undefined,
+              search: searchQuery || undefined,
+            })}
             className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg text-sm font-medium flex items-center gap-2 transition-colors shadow-sm"
           >
             <Filter className="w-4 h-4" /> Filter
@@ -260,6 +261,29 @@ export function MapSearchPage() {
                   </div>
                 </div>
               ))
+            ) : error ? (
+              // Error state
+              <div className="text-center py-12 px-4">
+                <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <X className="w-8 h-8 text-red-500" />
+                </div>
+                <h3 className="font-semibold text-slate-700 mb-1">
+                  {error}
+                </h3>
+                <p className="text-sm text-slate-500 mb-4">
+                  Silakan coba beberapa saat lagi atau klik tombol di bawah.
+                </p>
+                <button
+                  onClick={() => loadData({
+                    category: selectedCategory || undefined,
+                    district: selectedDistrict || undefined,
+                    search: searchQuery || undefined,
+                  })}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors shadow-sm"
+                >
+                  Coba Lagi
+                </button>
+              </div>
             ) : places.length === 0 ? (
               // Empty state
               <div className="text-center py-12 px-4">
@@ -363,7 +387,7 @@ export function MapSearchPage() {
             showGeolocation={true}
             loading={loading}
             center={mapCenter}
-            zoom={selectedLandmark ? 15 : 12}
+            zoom={12}
             className="w-full h-full"
           />
         </div>

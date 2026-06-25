@@ -42,12 +42,16 @@ export function AuthProvider({
       } = await supabase.auth.getUser();
 
       if (authUser) {
-        const { data: profile } = await supabase
+        const { data: profile, error: profileError } = await supabase
           .from("users")
           .select("*")
           .eq("id", authUser.id)
           .single();
-        setUser(profile);
+        if (profileError) {
+          console.error("Error fetching profile on refresh:", profileError);
+        } else if (profile) {
+          setUser(profile);
+        }
       } else {
         setUser(null);
       }
@@ -78,12 +82,20 @@ export function AuthProvider({
       data: { subscription },
     } = supabase.auth.onAuthStateChange(async (event, session) => {
       if (session?.user) {
-        const { data: profile } = await supabase
-          .from("users")
-          .select("*")
-          .eq("id", session.user.id)
-          .single();
-        setUser(profile);
+        try {
+          const { data: profile, error: profileError } = await supabase
+            .from("users")
+            .select("*")
+            .eq("id", session.user.id)
+            .single();
+          if (profileError) {
+            console.error("Error fetching profile on auth change:", profileError);
+          } else if (profile) {
+            setUser(profile);
+          }
+        } catch (err) {
+          console.error("Unexpected profile fetch error on auth change:", err);
+        }
       } else {
         setUser(null);
       }

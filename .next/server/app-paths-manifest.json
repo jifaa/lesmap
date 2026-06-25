@@ -1,6 +1,4 @@
 {
-  "/owner/page": "app/owner/page.js",
-  "/(main)/search/page": "app/(main)/search/page.js",
-  "/(main)/detail/[id]/page": "app/(main)/detail/[id]/page.js",
-  "/(main)/page": "app/(main)/page.js"
+  "/(main)/page": "app/(main)/page.js",
+  "/(main)/search/page": "app/(main)/search/page.js"
 }

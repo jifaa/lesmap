@@ -56,7 +56,10 @@ export function OwnerDashboardPage() {
   const [activeTab, setActiveTab] = useState<"dashboard" | "add" | "list">("dashboard");
   const [places, setPlaces] = useState<CoursePlace[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [loadingPlaces, setLoadingPlaces] = useState(false);
+  const [loadingCategories, setLoadingCategories] = useState(false);
+  const [placesError, setPlacesError] = useState<string | null>(null);
+  const [categoriesError, setCategoriesError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [editingPlace, setEditingPlace] = useState<CoursePlace | null>(null);
 
@@ -84,48 +87,69 @@ export function OwnerDashboardPage() {
   });
 
   // Fetch user's places
-  const fetchPlaces = useCallback(async () => {
-    if (!user) return;
+  const fetchPlaces = useCallback(async (ownerId: string) => {
+    if (!ownerId) {
+      setPlaces([]);
+      setLoadingPlaces(false);
+      return;
+    }
 
-    setLoading(true);
+    setLoadingPlaces(true);
+    setPlacesError(null);
     try {
       const { data, error } = await supabase
         .from("course_places")
         .select("*")
-        .eq("owner_id", user.id)
+        .eq("owner_id", ownerId)
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setPlaces(data || []);
+      setPlaces(data ?? []);
     } catch (error) {
       console.error("Error fetching places:", error);
+      setPlaces([]);
+      setPlacesError("Gagal memuat data tempat les");
       toast.error("Gagal memuat data tempat les");
     } finally {
-      setLoading(false);
+      setLoadingPlaces(false);
     }
-  }, [user]);
+  }, []);
 
   // Fetch categories
   const fetchCategories = useCallback(async () => {
+    setLoadingCategories(true);
+    setCategoriesError(null);
     try {
       const { data, error } = await supabase
         .from("categories")
-        .select("*")
-        .order("name");
+        .select("id,name,icon")
+        .order("name", { ascending: true });
 
       if (error) throw error;
-      setCategories(data || []);
+      setCategories(data ?? []);
     } catch (error) {
       console.error("Error fetching categories:", error);
+      setCategories([]);
+      setCategoriesError("Gagal memuat kategori. Coba refresh halaman.");
+    } finally {
+      setLoadingCategories(false);
     }
   }, []);
 
   useEffect(() => {
-    if (user) {
-      fetchPlaces();
-      fetchCategories();
+    fetchCategories();
+  }, [fetchCategories]);
+
+  useEffect(() => {
+    if (!authLoading && user?.id) {
+      fetchPlaces(user.id);
     }
-  }, [user, fetchPlaces, fetchCategories]);
+
+    if (!authLoading && !user?.id) {
+      setPlaces([]);
+      setLoadingPlaces(false);
+    }
+  }, [authLoading, user?.id, fetchPlaces]);
 
   // Calculate stats
   const stats = {
@@ -212,7 +236,7 @@ export function OwnerDashboardPage() {
       toast.success("Tempat les berhasil diajukan! Menunggu verifikasi admin.");
       resetForm();
       setActiveTab("list");
-      fetchPlaces();
+      if (user?.id) fetchPlaces(user.id);
     } catch (error) {
       console.error("Error adding place:", error);
       toast.error("Gagal menambahkan tempat les");
@@ -304,7 +328,7 @@ export function OwnerDashboardPage() {
       toast.success("Tempat les berhasil diperbarui!");
       resetForm();
       setActiveTab("list");
-      fetchPlaces();
+      if (user?.id) fetchPlaces(user.id);
     } catch (error) {
       console.error("Error updating place:", error);
       toast.error("Gagal memperbarui tempat les");
@@ -509,12 +533,29 @@ export function OwnerDashboardPage() {
                       onChange={handleInputChange}
                       required
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                      disabled={loadingCategories}
                     >
-                      <option value="">Pilih Kategori...</option>
-                      {categories.map(cat => (
-                        <option key={cat.id} value={cat.name}>{cat.name}</option>
-                      ))}
+                      {loadingCategories ? (
+                        <option value="">Memuat kategori...</option>
+                      ) : !loadingCategories && categories.length === 0 ? (
+                        <option value="" disabled>Belum ada kategori</option>
+                      ) : (
+                        <>
+                          <option value="">Pilih Kategori...</option>
+                          {categories.map(cat => (
+                            <option key={cat.id} value={cat.name}>{cat.name}</option>
+                          ))}
+                        </>
+                      )}
                     </select>
+                    {categoriesError && (
+                      <p className="text-xs text-red-500 mt-1">{categoriesError}</p>
+                    )}
+                    {!loadingCategories && categories.length === 0 && !categoriesError && (
+                      <p className="text-xs text-slate-500 mt-1">
+                        Belum ada kategori. Hubungi admin untuk menambahkan kategori.
+                      </p>
+                    )}
                   </div>
                 </div>
 
@@ -868,15 +909,28 @@ export function OwnerDashboardPage() {
               </button>
             </div>
 
-            {loading ? (
+            {loadingPlaces ? (
               <div className="flex items-center justify-center py-12">
                 <Loader2 className="w-8 h-8 animate-spin text-blue-600" />
               </div>
+            ) : placesError ? (
+              <div className="text-center py-12 px-4">
+                <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">{placesError}</h3>
+                <button
+                  onClick={() => user?.id && fetchPlaces(user.id)}
+                  className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors"
+                >
+                  Coba Lagi
+                </button>
+              </div>
             ) : places.length === 0 ? (
-              <div className="text-center py-12">
+              <div className="text-center py-12 px-4">
                 <MapPin className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-slate-700 mb-2">Belum Ada Tempat Les</h3>
-                <p className="text-slate-500 mb-4">Tambahkan tempat les pertama Anda</p>
+                <h3 className="text-lg font-semibold text-slate-700 mb-2">Belum ada tempat les</h3>
+                <p className="text-slate-500 mb-4 max-w-md mx-auto">
+                  Tambahkan tempat les pertamamu agar bisa diverifikasi admin dan tampil di peta kursus.
+                </p>
                 <button
                   onClick={() => setActiveTab("add")}
                   className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg font-medium transition-colors"

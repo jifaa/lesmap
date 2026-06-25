@@ -47,7 +47,7 @@ export async function fetchApprovedCoursePlaces(): Promise<CoursePlace[]> {
 
   if (error) {
     console.error("Error fetching course places:", error);
-    return [];
+    throw error;
   }
 
   return data ?? [];
@@ -97,7 +97,7 @@ export async function fetchFilteredCoursePlaces(params: {
 
   if (error) {
     console.error("Error fetching filtered course places:", error);
-    return [];
+    throw error;
   }
 
   return data ?? [];
@@ -112,7 +112,7 @@ export async function fetchDistricts(): Promise<string[]> {
 
   if (error) {
     console.error("Error fetching districts:", error);
-    return [];
+    throw error;
   }
 
   // Get unique districts
@@ -129,7 +129,7 @@ export async function fetchCategories(): Promise<string[]> {
 
   if (error) {
     console.error("Error fetching categories:", error);
-    return [];
+    throw error;
   }
 
   // Get unique categories
