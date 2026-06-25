@@ -37,13 +37,13 @@ export function GeometryPickerMap({
 }: GeometryPickerMapProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   // We store imperative Leaflet references here so React re-renders don't recreate them
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   const mapRef = useRef<any>(null);          // L.Map
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   const drawnRef = useRef<any>(null);        // L.FeatureGroup (drawn items)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   const controlRef = useRef<any>(null);      // L.Control.Draw
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   const handlerRef = useRef<any>(null);      // active draw handler
   const modeRef = useRef<GeometryType>(mode);
   const onChangeRef = useRef(onChange);
@@ -65,7 +65,7 @@ export function GeometryPickerMap({
       if (destroyed || !containerRef.current) return;
 
       // Fix default marker icon
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      
       delete (L.Icon.Default.prototype as any)._getIconUrl;
       L.Icon.Default.mergeOptions({
         iconUrl:
@@ -163,7 +163,7 @@ export function GeometryPickerMap({
   useEffect(() => {
     modeRef.current = mode;
     if (!mapRef.current) return; // map not ready yet; init() will call activateMode
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    
     import("leaflet").then(({ default: L }) => {
       activateMode(L, mapRef.current, mode);
     });
@@ -173,7 +173,7 @@ export function GeometryPickerMap({
   // ── 3. Load initial/updated geometry from parent ─────────────────────────────
   useEffect(() => {
     if (!mapRef.current || !drawnRef.current) return;
-    // eslint-disable-next-line @typescript-eslint/no-floating-promises
+    
     import("leaflet").then(({ default: L }) => {
       loadGeometry(L, drawnRef.current, initialGeojson ?? null);
     });
@@ -195,7 +195,7 @@ export function GeometryPickerMap({
 
 // ── Helpers (module-level, no closure) ────────────────────────────────────────
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 function loadGeometry(L: any, drawn: any, geojson: GeoJSONGeometry | null) {
   if (!drawn) return;
   drawn.clearLayers();
@@ -219,7 +219,7 @@ function loadGeometry(L: any, drawn: any, geojson: GeoJSONGeometry | null) {
   }
 }
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 function activateMode(L: any, map: any, mode: GeometryType) {
   // Cancel any running handler first
   if (handlerRef_global.current) {
@@ -258,5 +258,5 @@ function activateMode(L: any, map: any, mode: GeometryType) {
 // Module-level ref to track the active draw handler across React renders
 // (cannot use useRef here since this is a plain function, not a component)
 // ponytail: global module ref — safe because only one map instance exists at a time
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
+
 const handlerRef_global = { current: null as any };

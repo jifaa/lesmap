@@ -14,10 +14,7 @@ import {
   MapPin,
   Eye,
   Trash2,
-  AlertCircle,
   Plus,
-  CheckCircle2,
-  XCircle,
   Search,
   Building2,
   UserCheck,
@@ -27,44 +24,9 @@ import { useAuth } from "@/lib/auth-client";
 import { supabase } from "@/lib/supabase/client";
 import { toast } from "sonner";
 import Link from "next/link";
-
-interface CoursePlace {
-  id: number;
-  name: string;
-  address: string;
-  district: string;
-  city: string;
-  category: string;
-  phone: string | null;
-  status: "pending" | "approved" | "rejected";
-  owner_id: string;
-  created_at: string;
-  latitude: number;
-  longitude: number;
-  geometry_type?: "point" | "line" | "polygon";
-  geometry_geojson?: { type: string; coordinates: unknown } | null;
-}
-
-interface UserProfile {
-  id: string;
-  email: string;
-  full_name: string | null;
-  phone: string | null;
-  role: "user" | "admin";
-  created_at: string;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  icon: string | null;
-}
-
-interface Fasilitas {
-  id: number;
-  name: string;
-  icon: string | null;
-}
+import type { CoursePlace, UserProfile, Category, Fasilitas } from "@/types/database";
+import { StatusBadge } from "../components/StatusBadge";
+import { StatCard } from "../components/StatCard";
 
 export function AdminDashboardPage() {
   const { user, signOut } = useAuth();
@@ -190,7 +152,6 @@ export function AdminDashboardPage() {
     } catch (error: any) { 
       const msg = error?.message || "Gagal";
       toast.error(msg);
-      alert("ERROR DATABASE: " + msg); 
     }
     finally { setSubmitting(false); }
   };
@@ -221,7 +182,6 @@ export function AdminDashboardPage() {
     } catch (error: any) { 
       const msg = error?.message || "Gagal";
       toast.error(msg); 
-      alert("ERROR DATABASE: " + msg);
     }
     finally { setSubmitting(false); }
   };
@@ -271,18 +231,7 @@ export function AdminDashboardPage() {
   const pendingPlaces = places.filter(p => p.status === "pending");
   const filteredPlaces = places.filter(p => p.name.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  const StatusBadge = ({ status }: { status: string }) => {
-    const c = {
-      pending: { bg: "bg-yellow-100", text: "text-yellow-700", icon: AlertCircle, label: "Pending" },
-      approved: { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle2, label: "Approved" },
-      rejected: { bg: "bg-red-100", text: "text-red-700", icon: XCircle, label: "Rejected" },
-    }[status] || { bg: "bg-gray-100", text: "text-gray-700", icon: AlertCircle, label: status };
-    return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${c.bg} ${c.text} text-xs font-semibold rounded-full`}>
-        {c.label}
-      </span>
-    );
-  };
+
 
   return (
     <div className="flex w-full min-h-screen bg-slate-50">
@@ -322,10 +271,10 @@ export function AdminDashboardPage() {
         {activeTab === "dashboard" && (
           <>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border"><div className="text-sm text-slate-500">Total</div><div className="text-3xl font-bold">{stats.total}</div></div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border"><div className="text-sm text-slate-500">Pending</div><div className="text-3xl font-bold text-yellow-600">{stats.pending}</div></div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border"><div className="text-sm text-slate-500">Approved</div><div className="text-3xl font-bold text-green-600">{stats.approved}</div></div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border"><div className="text-sm text-slate-500">User</div><div className="text-3xl font-bold text-blue-600">{stats.totalUsers}</div></div>
+              <StatCard title="Total" value={stats.total} />
+              <StatCard title="Pending" value={stats.pending} colorClass="text-yellow-600" />
+              <StatCard title="Approved" value={stats.approved} colorClass="text-green-600" />
+              <StatCard title="User" value={stats.totalUsers} colorClass="text-blue-600" />
             </div>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
               <div className="bg-white rounded-2xl shadow-sm border p-6">

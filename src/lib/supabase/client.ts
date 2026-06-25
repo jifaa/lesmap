@@ -12,18 +12,24 @@ export interface CoursePlace {
   name: string;
   address: string;
   district: string;
+  city: string;
+  province: string;
   category: string;
+  description: string | null;
+  phone: string | null;
+  whatsapp: string | null;
+  email: string | null;
+  website: string | null;
+  instagram: string | null;
   latitude: number;
   longitude: number;
+  price_min: number | null;
+  price_max: number | null;
   status: "pending" | "approved" | "rejected";
-  phone?: string;
-  price_min?: number;
-  price_max?: number;
-  description?: string;
+  owner_id: string;
+  created_at: string;
+  updated_at: string | null;
   image_url?: string;
-  created_at?: string;
-  owner_id?: string;
-  // GIS geometry fields (added via migration)
   geometry_type?: "point" | "line" | "polygon";
   geometry_geojson?: {
     type: string;
@@ -47,21 +53,6 @@ export async function fetchApprovedCoursePlaces(): Promise<CoursePlace[]> {
   return data ?? [];
 }
 
-// Fetch all course places for a specific owner
-export async function fetchOwnerCoursePlaces(ownerId: string): Promise<CoursePlace[]> {
-  const { data, error } = await supabase
-    .from("course_places")
-    .select("*")
-    .eq("owner_id", ownerId)
-    .order("created_at", { ascending: false });
-
-  if (error) {
-    console.error("Error fetching owner course places:", error);
-    return [];
-  }
-
-  return data ?? [];
-}
 
 // Fetch a single course place by ID
 export async function fetchCoursePlaceById(id: number): Promise<CoursePlace | null> {

@@ -5,27 +5,23 @@ import { useParams } from "next/navigation";
 import {
   MapPin,
   Navigation,
-  Clock,
-  CreditCard,
-  Wifi,
-  Wind,
-  Car,
   Star,
-  CheckCircle,
   MessageCircle,
-  Heart,
-  Share2,
   ArrowLeft,
   Loader2,
   AlertCircle,
+  Wifi,
+  Wind,
+  Car,
+  CreditCard,
+  Heart,
+  Share2,
+  CheckCircle,
 } from "lucide-react";
 import Link from "next/link";
-import { ImageWithFallback } from "../components/figma/ImageWithFallback";
 import { DynamicLeafletMap } from "../components/DynamicLeafletMap";
-import {
-  fetchCoursePlaceById,
-  type CoursePlace,
-} from "@/lib/supabase/client";
+import { fetchCoursePlaceById } from "@/lib/supabase/client";
+import type { CoursePlace } from "@/types/database";
 
 export function CourseDetailPage() {
   const params = useParams();
@@ -58,7 +54,7 @@ export function CourseDetailPage() {
   }, [id]);
 
   // WhatsApp link builder
-  const getWhatsAppLink = (phone?: string) => {
+  const getWhatsAppLink = (phone: string | null | undefined) => {
     const cleanPhone = phone?.replace(/[^0-9]/g, "") ?? "";
     const message = encodeURIComponent(
       `Halo, saya tertarik dengan ${place?.name}. Bisa info lebih lanjut?`

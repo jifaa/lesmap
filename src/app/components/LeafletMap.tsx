@@ -32,7 +32,7 @@ const DEFAULT_ZOOM = 12;
 // back to the default icon.
 // ============================================================
 function fixLeafletDefaultIcon() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  
   delete (L.Icon.Default.prototype as any)._getIconUrl;
 
   L.Icon.Default.mergeOptions({

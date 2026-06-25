@@ -32,27 +32,3 @@ export async function createServerSupabaseClient() {
   );
 }
 
-/**
- * Create Supabase client for middleware
- */
-export function createMiddlewareSupabaseClient(
-  cookies: {
-    getAll: () => Array<{ name: string; value: string }>;
-    setAll: (cookiesToSet: Array<{
-      name: string;
-      value: string;
-      options?: Record<string, unknown>;
-    }>) => void;
-  }
-) {
-  return createServerClient<Database>(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY!,
-    {
-      cookies: {
-        getAll: cookies.getAll,
-        setAll: cookies.setAll,
-      },
-    }
-  );
-}

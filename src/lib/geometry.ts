@@ -22,12 +22,6 @@ export function getGeometryCenter(
   }
 }
 
-/** Derive lat/lng fallback from geometry (for existing lat/lng columns) */
-export function geometryToLatLng(
-  geojson: GeoJSONGeometry
-): { lat: number; lng: number } | null {
-  return getGeometryCenter(geojson);
-}
 
 /** Validate that the geometry has enough coordinates for its type */
 export function isValidGeometry(

@@ -5,27 +5,20 @@ import {
   LayoutDashboard,
   PlusCircle,
   List,
-  CheckCircle,
   LogOut,
   MapPin,
-  Edit,
-  Eye,
-  Check,
-  X,
-  Star,
   Loader2,
-  DollarSign,
   Phone,
   Mail,
   Globe,
   Instagram,
-  Save,
   AlertCircle,
-  CheckCircle2,
-  XCircle,
-  ExternalLink,
-  Clock,
   ArrowLeft,
+  DollarSign,
+  Save,
+  Edit,
+  Eye,
+  ExternalLink,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-client";
 import { supabase } from "@/lib/supabase/client";
@@ -38,38 +31,9 @@ import {
   type GeometryType,
   type GeoJSONGeometry,
 } from "@/lib/geometry";
-
-// Types
-interface CoursePlace {
-  id: number;
-  name: string;
-  address: string;
-  district: string;
-  city: string;
-  province: string;
-  category: string;
-  description: string | null;
-  phone: string | null;
-  whatsapp: string | null;
-  email: string | null;
-  website: string | null;
-  instagram: string | null;
-  latitude: number;
-  longitude: number;
-  price_min: number | null;
-  price_max: number | null;
-  status: "pending" | "approved" | "rejected";
-  owner_id: string;
-  created_at: string;
-  geometry_type?: GeometryType;
-  geometry_geojson?: GeoJSONGeometry | null;
-}
-
-interface Category {
-  id: number;
-  name: string;
-  icon: string | null;
-}
+import { StatusBadge } from "../components/StatusBadge";
+import { StatCard } from "../components/StatCard";
+import type { CoursePlace, Category } from "@/types/database";
 
 // District list for Samarinda
 const districts = [
@@ -349,20 +313,7 @@ export function OwnerDashboardPage() {
     }
   };
 
-  // Status badge component
-  const StatusBadge = ({ status }: { status: CoursePlace["status"] }) => {
-    const config = {
-      pending: { bg: "bg-yellow-100", text: "text-yellow-700", icon: Clock, label: "Pending" },
-      approved: { bg: "bg-green-100", text: "text-green-700", icon: CheckCircle2, label: "Approved" },
-      rejected: { bg: "bg-red-100", text: "text-red-700", icon: XCircle, label: "Rejected" },
-    };
-    const { bg, text, icon: Icon, label } = config[status];
-    return (
-      <span className={`inline-flex items-center gap-1 px-2.5 py-1 ${bg} ${text} text-xs font-semibold rounded-full`}>
-        <Icon className="w-3 h-3" /> {label}
-      </span>
-    );
-  };
+
 
   if (authLoading) {
     return (
@@ -472,31 +423,31 @@ export function OwnerDashboardPage() {
           <>
             {/* Stats */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="text-sm font-medium text-slate-500 mb-2">Total Tempat Les</div>
-                <div className="text-3xl font-bold text-slate-900">{stats.total}</div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="text-sm font-medium text-slate-500 mb-2">Pending</div>
-                <div className="text-3xl font-bold text-yellow-600">{stats.pending}</div>
-                <div className="mt-2 h-1.5 bg-yellow-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-yellow-400 rounded-full" style={{ width: stats.total ? `${(stats.pending / stats.total) * 100}%` : '0%' }} />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="text-sm font-medium text-slate-500 mb-2">Approved</div>
-                <div className="text-3xl font-bold text-green-600">{stats.approved}</div>
-                <div className="mt-2 h-1.5 bg-green-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-green-400 rounded-full" style={{ width: stats.total ? `${(stats.approved / stats.total) * 100}%` : '0%' }} />
-                </div>
-              </div>
-              <div className="bg-white p-6 rounded-2xl shadow-sm border border-slate-200">
-                <div className="text-sm font-medium text-slate-500 mb-2">Rejected</div>
-                <div className="text-3xl font-bold text-red-600">{stats.rejected}</div>
-                <div className="mt-2 h-1.5 bg-red-100 rounded-full overflow-hidden">
-                  <div className="h-full bg-red-400 rounded-full" style={{ width: stats.total ? `${(stats.rejected / stats.total) * 100}%` : '0%' }} />
-                </div>
-              </div>
+              <StatCard title="Total Tempat Les" value={stats.total} />
+              <StatCard 
+                title="Pending" 
+                value={stats.pending} 
+                colorClass="text-yellow-600" 
+                progressPercentage={stats.total ? (stats.pending / stats.total) * 100 : 0}
+                progressBgClass="bg-yellow-100"
+                progressFillClass="bg-yellow-400"
+              />
+              <StatCard 
+                title="Approved" 
+                value={stats.approved} 
+                colorClass="text-green-600" 
+                progressPercentage={stats.total ? (stats.approved / stats.total) * 100 : 0}
+                progressBgClass="bg-green-100"
+                progressFillClass="bg-green-400"
+              />
+              <StatCard 
+                title="Rejected" 
+                value={stats.rejected} 
+                colorClass="text-red-600" 
+                progressPercentage={stats.total ? (stats.rejected / stats.total) * 100 : 0}
+                progressBgClass="bg-red-100"
+                progressFillClass="bg-red-400"
+              />
             </div>
 
             {/* Quick Actions */}
