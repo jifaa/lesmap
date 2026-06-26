@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   Search,
   Filter,
@@ -40,14 +40,23 @@ export function MapSearchPage() {
   const [activePlaceId, setActivePlaceId] = useState<number | null>(null);
 
   // Route-aware state
+  const router = useRouter();
   const pathname = usePathname();
   const isSearchRoute = pathname === "/search";
   const mountedRef = useRef(false);
   const requestIdRef = useRef(0);
   const lastFilterKeyRef = useRef("");
+  const visitKeyRef = useRef(0);
 
   // Map remount key for route re-entry
   const [mapKey, setMapKey] = useState(0);
+  const [pageKey, setPageKey] = useState(0);
+
+  useEffect(() => {
+    if (isSearchRoute) {
+      setPageKey((prev) => prev + 1);
+    }
+  }, [isSearchRoute]);
 
   // Unified data loading function
   const loadData = useCallback(async (filters?: { category?: string; district?: string; search?: string }) => {
@@ -79,54 +88,76 @@ export function MapSearchPage() {
     }
   }, []);
 
-  // Load initial options and data — route-aware
+  // Load initial options and data — route-aware with soft refresh
   useEffect(() => {
-    mountedRef.current = true;
-
     if (!isSearchRoute) {
       requestIdRef.current += 1;
       setLoading(false);
       return;
     }
 
-    let active = true;
-    async function loadInitialOptions() {
+    const visitKey = ++visitKeyRef.current;
+    mountedRef.current = true;
+
+    setLoading(false);
+    setInitialLoaded(false);
+    setError(null);
+    setMapKey((prev) => prev + 1);
+
+    router.refresh();
+
+    async function refreshSearchPage() {
+      setLoading(true);
+
       try {
-        const [categoriesData, districtsData] = await Promise.all([
+        const [categoriesData, districtsData, placesData] = await Promise.all([
           fetchCategories(),
           fetchDistricts(),
+          fetchApprovedCoursePlaces(),
         ]);
-        if (!active || !mountedRef.current) return;
+
+        if (!mountedRef.current) return;
+        if (visitKey !== visitKeyRef.current) return;
+
         setCategories(categoriesData);
         setDistricts(districtsData);
+        setPlaces(placesData);
       } catch (err) {
-        if (!active || !mountedRef.current) return;
-        console.error("Error loading filter options:", err);
+        if (!mountedRef.current) return;
+        if (visitKey !== visitKeyRef.current) return;
+
+        console.error("Error refreshing search page:", err);
+        setPlaces([]);
+        setError("Gagal memuat data peta kursus");
+      } finally {
+        if (mountedRef.current && visitKey === visitKeyRef.current) {
+          setLoading(false);
+          setInitialLoaded(true);
+        }
       }
     }
 
-    setInitialLoaded(false);
-    setMapKey((prev) => prev + 1);
-    lastFilterKeyRef.current = JSON.stringify({
-      category: selectedCategory || "",
-      district: selectedDistrict || "",
-      search: searchQuery || "",
-    });
-
-    loadInitialOptions();
-    loadData({
-      category: selectedCategory || undefined,
-      district: selectedDistrict || undefined,
-      search: searchQuery || undefined,
-    });
+    refreshSearchPage();
 
     return () => {
-      active = false;
       mountedRef.current = false;
       requestIdRef.current += 1;
+      visitKeyRef.current += 1;
       setLoading(false);
     };
-  }, [isSearchRoute, loadData]);
+  }, [isSearchRoute, router]);
+
+  // Safety timeout for loading
+  useEffect(() => {
+    if (!loading) return;
+
+    const timer = setTimeout(() => {
+      setLoading(false);
+      setError("Data terlalu lama dimuat. Klik Coba Lagi.");
+    }, 10000);
+
+    return () => clearTimeout(timer);
+  }, [loading]);
 
   // Debounced search after initial load — route-aware
   useEffect(() => {
@@ -181,7 +212,7 @@ export function MapSearchPage() {
   const mapCenter: [number, number] = [-0.5022, 117.1536];
 
   return (
-    <div className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-slate-50">
+    <div key={pageKey} className="flex flex-col h-[calc(100vh-64px)] overflow-hidden bg-slate-50">
       {/* Filter Bar */}
       <div className="bg-white border-b border-slate-200 py-3 px-4 z-10 shadow-sm flex-shrink-0">
         <div className="max-w-full mx-auto flex flex-wrap gap-3 items-center">

@@ -198,6 +198,23 @@ function ChangeMapView({
 }
 
 // ============================================================
+// Invalidate map size after mount
+// ============================================================
+function InvalidateMapSize() {
+  const map = useMap();
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      map.invalidateSize();
+    }, 150);
+
+    return () => clearTimeout(timer);
+  }, [map]);
+
+  return null;
+}
+
+// ============================================================
 // Geolocation button
 // ============================================================
 function GeolocationControl({
@@ -578,6 +595,8 @@ export function LeafletMap({
         zoomControl={true}
         attributionControl={true}
       >
+          <InvalidateMapSize />
+
           {/* Dynamic view updater */}
           <ChangeMapView center={mapCenter} zoom={zoom} />
 

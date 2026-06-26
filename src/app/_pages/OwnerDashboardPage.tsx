@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
-import { usePathname } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -54,9 +54,17 @@ export function OwnerDashboardPage() {
   const { user, signOut, isLoading: authLoading } = useAuth();
 
   // Route-aware refs
+  const router = useRouter();
   const pathname = usePathname();
   const isOwnerRoute = pathname === "/owner";
-  const ownerRequestRef = useRef(0);
+  const ownerVisitKeyRef = useRef(0);
+  const [pageKey, setPageKey] = useState(0);
+
+  useEffect(() => {
+    if (isOwnerRoute) {
+      setPageKey((prev) => prev + 1);
+    }
+  }, [isOwnerRoute]);
 
   // State
   const [activeTab, setActiveTab] = useState<"dashboard" | "add" | "list">("dashboard");
@@ -92,10 +100,8 @@ export function OwnerDashboardPage() {
     price_max: "",
   });
 
-  // Fetch user's places with request cancellation
+  // Fetch user's places
   const fetchPlaces = useCallback(async (ownerId: string) => {
-    const requestId = ++ownerRequestRef.current;
-
     if (!ownerId) {
       setPlaces([]);
       setLoadingPlaces(false);
@@ -113,20 +119,14 @@ export function OwnerDashboardPage() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      if (requestId !== ownerRequestRef.current) return;
-
       setPlaces(data ?? []);
     } catch (error) {
-      if (requestId !== ownerRequestRef.current) return;
-
       console.error("Error fetching places:", error);
       setPlaces([]);
       setPlacesError("Gagal memuat data tempat les");
       toast.error("Gagal memuat data tempat les");
     } finally {
-      if (requestId === ownerRequestRef.current) {
-        setLoadingPlaces(false);
-      }
+      setLoadingPlaces(false);
     }
   }, []);
 
@@ -154,22 +154,104 @@ export function OwnerDashboardPage() {
   // Route-aware: fetch when /owner is active, invalidate when leaving
   useEffect(() => {
     if (!isOwnerRoute) {
-      ownerRequestRef.current += 1;
+      ownerVisitKeyRef.current += 1;
       setLoadingPlaces(false);
+      setLoadingCategories(false);
       return;
     }
 
-    fetchCategories();
+    const visitKey = ++ownerVisitKeyRef.current;
 
-    if (authLoading) return;
+    setPlacesError(null);
+    setCategoriesError(null);
+    setLoadingPlaces(false);
+    setLoadingCategories(false);
 
-    if (user?.id) {
-      fetchPlaces(user.id);
-    } else {
-      setPlaces([]);
-      setLoadingPlaces(false);
+    router.refresh();
+
+    async function refreshOwnerPage() {
+      setLoadingCategories(true);
+
+      try {
+        const { data, error } = await supabase
+          .from("categories")
+          .select("id,name,icon")
+          .order("name", { ascending: true });
+
+        if (visitKey !== ownerVisitKeyRef.current) return;
+        if (error) throw error;
+
+        setCategories(data ?? []);
+      } catch (err) {
+        if (visitKey !== ownerVisitKeyRef.current) return;
+
+        console.error("Error refreshing categories:", err);
+        setCategories([]);
+        setCategoriesError("Gagal memuat kategori. Coba refresh halaman.");
+      } finally {
+        if (visitKey === ownerVisitKeyRef.current) {
+          setLoadingCategories(false);
+        }
+      }
+
+      if (!authLoading && user?.id) {
+        setLoadingPlaces(true);
+
+        try {
+          const { data, error } = await supabase
+            .from("course_places")
+            .select("*")
+            .eq("owner_id", user.id)
+            .order("created_at", { ascending: false });
+
+          if (visitKey !== ownerVisitKeyRef.current) return;
+          if (error) throw error;
+
+          setPlaces(data ?? []);
+        } catch (err) {
+          if (visitKey !== ownerVisitKeyRef.current) return;
+
+          console.error("Error refreshing owner places:", err);
+          setPlaces([]);
+          setPlacesError("Gagal memuat data tempat les");
+        } finally {
+          if (visitKey === ownerVisitKeyRef.current) {
+            setLoadingPlaces(false);
+          }
+        }
+      } else if (!authLoading && !user?.id) {
+        setPlaces([]);
+        setLoadingPlaces(false);
+      }
     }
-  }, [isOwnerRoute, authLoading, user?.id, fetchPlaces, fetchCategories]);
+
+    refreshOwnerPage();
+
+    return () => {
+      ownerVisitKeyRef.current += 1;
+      setLoadingPlaces(false);
+      setLoadingCategories(false);
+    };
+  }, [isOwnerRoute, authLoading, user?.id, router]);
+
+  // Safety timeouts for infinite loading
+  useEffect(() => {
+    if (!loadingPlaces) return;
+    const timer = setTimeout(() => {
+      setLoadingPlaces(false);
+      setPlacesError("Data terlalu lama dimuat. Klik Coba Lagi.");
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [loadingPlaces]);
+
+  useEffect(() => {
+    if (!loadingCategories) return;
+    const timer = setTimeout(() => {
+      setLoadingCategories(false);
+      setCategoriesError("Data terlalu lama dimuat. Klik Coba Lagi.");
+    }, 10000);
+    return () => clearTimeout(timer);
+  }, [loadingCategories]);
 
   // Refresh on window focus
   useEffect(() => {
@@ -402,7 +484,7 @@ export function OwnerDashboardPage() {
   }
 
   return (
-    <div className="flex w-full min-h-screen bg-slate-50">
+    <div key={pageKey} className="flex w-full min-h-screen bg-slate-50">
       {/* Sidebar */}
       <aside className="w-64 bg-white border-r border-slate-200 flex flex-col hidden md:flex sticky top-0 h-screen">
         <div className="p-6 border-b border-slate-100">
