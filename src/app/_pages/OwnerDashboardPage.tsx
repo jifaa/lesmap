@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   PlusCircle,
@@ -52,6 +53,11 @@ const districts = [
 export function OwnerDashboardPage() {
   const { user, signOut, isLoading: authLoading } = useAuth();
 
+  // Route-aware refs
+  const pathname = usePathname();
+  const isOwnerRoute = pathname === "/owner";
+  const ownerRequestRef = useRef(0);
+
   // State
   const [activeTab, setActiveTab] = useState<"dashboard" | "add" | "list">("dashboard");
   const [places, setPlaces] = useState<CoursePlace[]>([]);
@@ -86,8 +92,10 @@ export function OwnerDashboardPage() {
     price_max: "",
   });
 
-  // Fetch user's places
+  // Fetch user's places with request cancellation
   const fetchPlaces = useCallback(async (ownerId: string) => {
+    const requestId = ++ownerRequestRef.current;
+
     if (!ownerId) {
       setPlaces([]);
       setLoadingPlaces(false);
@@ -96,6 +104,7 @@ export function OwnerDashboardPage() {
 
     setLoadingPlaces(true);
     setPlacesError(null);
+
     try {
       const { data, error } = await supabase
         .from("course_places")
@@ -104,14 +113,20 @@ export function OwnerDashboardPage() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
+      if (requestId !== ownerRequestRef.current) return;
+
       setPlaces(data ?? []);
     } catch (error) {
+      if (requestId !== ownerRequestRef.current) return;
+
       console.error("Error fetching places:", error);
       setPlaces([]);
       setPlacesError("Gagal memuat data tempat les");
       toast.error("Gagal memuat data tempat les");
     } finally {
-      setLoadingPlaces(false);
+      if (requestId === ownerRequestRef.current) {
+        setLoadingPlaces(false);
+      }
     }
   }, []);
 
@@ -136,20 +151,46 @@ export function OwnerDashboardPage() {
     }
   }, []);
 
+  // Route-aware: fetch when /owner is active, invalidate when leaving
   useEffect(() => {
-    fetchCategories();
-  }, [fetchCategories]);
-
-  useEffect(() => {
-    if (!authLoading && user?.id) {
-      fetchPlaces(user.id);
+    if (!isOwnerRoute) {
+      ownerRequestRef.current += 1;
+      setLoadingPlaces(false);
+      return;
     }
 
-    if (!authLoading && !user?.id) {
+    fetchCategories();
+
+    if (authLoading) return;
+
+    if (user?.id) {
+      fetchPlaces(user.id);
+    } else {
       setPlaces([]);
       setLoadingPlaces(false);
     }
-  }, [authLoading, user?.id, fetchPlaces]);
+  }, [isOwnerRoute, authLoading, user?.id, fetchPlaces, fetchCategories]);
+
+  // Refresh on window focus
+  useEffect(() => {
+    if (!isOwnerRoute) return;
+
+    const refresh = () => {
+      fetchCategories();
+      if (user?.id) fetchPlaces(user.id);
+    };
+
+    window.addEventListener("focus", refresh);
+    const onVisibility = () => {
+      if (document.visibilityState === "visible") refresh();
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
+    return () => {
+      window.removeEventListener("focus", refresh);
+      document.removeEventListener("visibilitychange", onVisibility);
+    };
+  }, [isOwnerRoute, user?.id, fetchPlaces, fetchCategories]);
 
   // Calculate stats
   const stats = {

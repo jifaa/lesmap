@@ -1,9 +1,41 @@
 {
+  "app\\components\\DynamicGeometryPickerMap.tsx -> ./GeometryPickerMap": {
+    "id": "app\\components\\DynamicGeometryPickerMap.tsx -> ./GeometryPickerMap",
+    "files": [
+      "static/chunks/_app-pages-browser_src_app_components_GeometryPickerMap_tsx.js"
+    ]
+  },
   "app\\components\\DynamicLeafletMap.tsx -> ./LeafletMap": {
     "id": "app\\components\\DynamicLeafletMap.tsx -> ./LeafletMap",
     "files": [
       "static/css/_app-pages-browser_src_app_components_LeafletMap_tsx.css",
       "static/chunks/_app-pages-browser_src_app_components_LeafletMap_tsx.js"
+    ]
+  },
+  "app\\components\\GeometryPickerMap.tsx -> leaflet": {
+    "id": "app\\components\\GeometryPickerMap.tsx -> leaflet",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_leaflet_dist_leaflet-src_js.js"
+    ]
+  },
+  "app\\components\\GeometryPickerMap.tsx -> leaflet-draw": {
+    "id": "app\\components\\GeometryPickerMap.tsx -> leaflet-draw",
+    "files": [
+      "static/chunks/_app-pages-browser_node_modules_leaflet-draw_dist_leaflet_draw_js.js"
+    ]
+  },
+  "app\\components\\GeometryPickerMap.tsx -> leaflet-draw/dist/leaflet.draw.css": {
+    "id": "app\\components\\GeometryPickerMap.tsx -> leaflet-draw/dist/leaflet.draw.css",
+    "files": [
+      "static/css/_app-pages-browser_node_modules_leaflet-draw_dist_leaflet_draw_css.css",
+      "static/chunks/_app-pages-browser_node_modules_leaflet-draw_dist_leaflet_draw_css.js"
+    ]
+  },
+  "app\\components\\GeometryPickerMap.tsx -> leaflet/dist/leaflet.css": {
+    "id": "app\\components\\GeometryPickerMap.tsx -> leaflet/dist/leaflet.css",
+    "files": [
+      "static/css/_app-pages-browser_node_modules_leaflet_dist_leaflet_css.css",
+      "static/chunks/_app-pages-browser_node_modules_leaflet_dist_leaflet_css.js"
     ]
   }
 }

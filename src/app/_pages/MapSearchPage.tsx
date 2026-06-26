@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState, useCallback, useRef } from "react";
+import { usePathname } from "next/navigation";
 import {
   Search,
   Filter,
@@ -38,9 +39,15 @@ export function MapSearchPage() {
   // Active place (highlighted on map)
   const [activePlaceId, setActivePlaceId] = useState<number | null>(null);
 
-
-
+  // Route-aware state
+  const pathname = usePathname();
+  const isSearchRoute = pathname === "/search";
+  const mountedRef = useRef(false);
   const requestIdRef = useRef(0);
+  const lastFilterKeyRef = useRef("");
+
+  // Map remount key for route re-entry
+  const [mapKey, setMapKey] = useState(0);
 
   // Unified data loading function
   const loadData = useCallback(async (filters?: { category?: string; district?: string; search?: string }) => {
@@ -54,52 +61,88 @@ export function MapSearchPage() {
         ? await fetchFilteredCoursePlaces(filters)
         : await fetchApprovedCoursePlaces();
 
+      if (!mountedRef.current) return;
       if (requestId !== requestIdRef.current) return;
 
       setPlaces(placesData);
     } catch (err) {
+      if (!mountedRef.current) return;
       if (requestId !== requestIdRef.current) return;
       console.error("Error loading map data:", err);
       setPlaces([]);
       setError("Gagal memuat data peta kursus");
     } finally {
-      if (requestId === requestIdRef.current) {
+      if (mountedRef.current && requestId === requestIdRef.current) {
         setLoading(false);
         setInitialLoaded(true);
       }
     }
   }, []);
 
-  // Load initial options and data
+  // Load initial options and data — route-aware
   useEffect(() => {
-    let isMounted = true;
+    mountedRef.current = true;
+
+    if (!isSearchRoute) {
+      requestIdRef.current += 1;
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
     async function loadInitialOptions() {
       try {
         const [categoriesData, districtsData] = await Promise.all([
           fetchCategories(),
           fetchDistricts(),
         ]);
-        if (!isMounted) return;
+        if (!active || !mountedRef.current) return;
         setCategories(categoriesData);
         setDistricts(districtsData);
       } catch (err) {
+        if (!active || !mountedRef.current) return;
         console.error("Error loading filter options:", err);
       }
     }
 
+    setInitialLoaded(false);
+    setMapKey((prev) => prev + 1);
+    lastFilterKeyRef.current = JSON.stringify({
+      category: selectedCategory || "",
+      district: selectedDistrict || "",
+      search: searchQuery || "",
+    });
+
     loadInitialOptions();
-    loadData();
+    loadData({
+      category: selectedCategory || undefined,
+      district: selectedDistrict || undefined,
+      search: searchQuery || undefined,
+    });
 
     return () => {
-      isMounted = false;
+      active = false;
+      mountedRef.current = false;
+      requestIdRef.current += 1;
+      setLoading(false);
     };
-  }, [loadData]);
+  }, [isSearchRoute, loadData]);
 
-  // Debounced search after initial load
+  // Debounced search after initial load — route-aware
   useEffect(() => {
+    if (!isSearchRoute) return;
     if (!initialLoaded) return;
 
+    const currentFilterKey = JSON.stringify({
+      category: selectedCategory || "",
+      district: selectedDistrict || "",
+      search: searchQuery || "",
+    });
+
+    if (currentFilterKey === lastFilterKeyRef.current) return;
+
     const timer = setTimeout(() => {
+      lastFilterKeyRef.current = currentFilterKey;
       loadData({
         category: selectedCategory || undefined,
         district: selectedDistrict || undefined,
@@ -108,7 +151,7 @@ export function MapSearchPage() {
     }, 400);
 
     return () => clearTimeout(timer);
-  }, [initialLoaded, selectedCategory, selectedDistrict, searchQuery, loadData]);
+  }, [isSearchRoute, initialLoaded, selectedCategory, selectedDistrict, searchQuery, loadData]);
 
   // Clear all filters
   const clearFilters = async () => {
@@ -117,6 +160,14 @@ export function MapSearchPage() {
     setSelectedDistrict("");
     setSelectedRadius("");
     setActivePlaceId(null);
+
+    const emptyKey = JSON.stringify({
+      category: "",
+      district: "",
+      search: "",
+    });
+
+    lastFilterKeyRef.current = emptyKey;
     await loadData();
   };
 
@@ -381,6 +432,7 @@ export function MapSearchPage() {
         {/* Map Area */}
         <div className="hidden md:block flex-1 relative h-full bg-slate-100">
           <DynamicLeafletMap
+            key={mapKey}
             places={places}
             activePlaceId={activePlaceId}
             onPlaceClick={(id) => setActivePlaceId(id)}
